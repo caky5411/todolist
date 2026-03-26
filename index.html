@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的今日待辦與規劃</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f8fafc;
+        }
+        .task-done {
+            text-decoration: line-through;
+            color: #94a3b8;
+        }
+        .tab-active {
+            border-bottom: 3px solid #3b82f6;
+            color: #1d4ed8;
+        }
+        .tab-inactive {
+            color: #64748b;
+            border-bottom: 3px solid transparent;
+        }
+        /* 自訂核取方塊樣式 */
+        .custom-checkbox {
+            appearance: none;
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 2px solid #cbd5e1;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+        }
+        .custom-checkbox:checked {
+            background-color: #3b82f6;
+            border-color: #3b82f6;
+        }
+        .custom-checkbox:checked::after {
+            content: '✓';
+            color: white;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+        
+        <!-- 標題與日期 -->
+        <div class="p-6 bg-blue-600 text-white flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold mb-1">工作與規劃清單</h1>
+                <p id="current-date" class="text-blue-100 opacity-90 text-sm"></p>
+            </div>
+            <button onclick="toggleSettings()" class="p-2 bg-blue-500 hover:bg-blue-400 rounded-lg transition-colors" title="設定 Google 試算表">
+                ⚙️
+            </button>
+        </div>
+
+        <!-- 提醒欄位 (當天提醒) -->
+        <div id="reminder-box" class="px-6 py-4 bg-amber-50 border-b border-amber-100 hidden">
+            <div class="flex items-center gap-3">
+                <span class="text-amber-500 text-lg">🔔</span>
+                <p class="text-amber-800 text-sm font-medium" id="reminder-text">您今天還有待辦事項尚未完成喔！</p>
+            </div>
+        </div>
+
+        <!-- 頁籤切換 -->
+        <div class="flex border-b border-slate-100">
+            <button onclick="switchTab('today')" id="tab-today" class="flex-1 py-4 text-center font-medium tab-active transition-all">☀️ 今日事項</button>
+            <button onclick="switchTab('future')" id="tab-future" class="flex-1 py-4 text-center font-medium tab-inactive hover:bg-slate-50 transition-all">📅 未來規劃</button>
+        </div>
+
+        <!-- 輸入區域 -->
+        <div class="p-6 border-b border-slate-100 bg-slate-50/50">
+            <div class="flex flex-col gap-3">
+                <div class="flex gap-2">
+                    <input type="text" id="task-input" placeholder="準備做些什麼呢？" class="flex-1 px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" onkeypress="handleKeyPress(event)">
+                    <button onclick="addTask()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors whitespace-nowrap">新增</button>
+                </div>
+                <div id="date-picker-container" class="hidden animate-fade-in">
+                    <label class="text-xs text-slate-500 mb-1 block">預計執行日期：</label>
+                    <input type="date" id="task-date" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-slate-700">
+                </div>
+            </div>
+        </div>
+
+        <!-- 清單區域 -->
+        <div class="p-6">
+            <div id="empty-state" class="text-center py-8 text-slate-400 hidden">
+                <span class="text-4xl mb-2 block">✨</span>
+                <p>目前沒有任務，好好放鬆一下吧！</p>
+            </div>
+            
+            <ul id="task-list" class="space-y-3">
+                <!-- 任務會透過 JavaScript 動態插入這裡 -->
+            </ul>
+            
+            <!-- 雲端同步狀態 -->
+            <div class="mt-8 flex items-center justify-between text-xs text-slate-400 border-t pt-4">
+                <span id="sync-status">目前進度已自動儲存於瀏覽器</span>
+                <button onclick="syncToGoogle()" id="sync-btn" class="flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium transition-colors bg-blue-50 px-3 py-1.5 rounded-md">
+                    <span>☁️ 同步至試算表</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 設定說明與教學 (預設隱藏) -->
+    <div id="settings-panel" class="max-w-2xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hidden">
+        <div class="p-6 bg-slate-800 text-white flex justify-between items-center">
+            <h2 class="text-lg font-bold">Google 試算表同步設定</h2>
+            <button onclick="toggleSettings()" class="text-slate-400 hover:text-white">✕</button>
+        </div>
+        <div class="p-6 space-y-4 text-sm text-slate-700">
+            <div>
+                <label class="block font-medium mb-1">您的 Google Apps Script 網址 (Webhook URL)</label>
+                <input type="text" id="webhook-url" placeholder="https://script.google.com/macros/s/..." class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button onclick="saveSettings()" class="mt-2 bg-slate-800 text-white px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors">儲存設定</button>
+            </div>
+            
+            <hr class="my-6 border-slate-200">
+            
+            <h3 class="font-bold text-base text-slate-900">📝 如何取得網址？(只需設定一次)</h3>
+            <ol class="list-decimal pl-5 space-y-2">
+                <li>新增一個空白的 Google 試算表。</li>
+                <li>點擊上方選單的 <strong>「擴充功能」</strong> > <strong>「Apps Script」</strong>。</li>
+                <li>將編輯器內的程式碼清空，貼上以下程式碼：
+                    <pre class="bg-slate-100 p-3 rounded mt-2 overflow-x-auto text-xs font-mono text-slate-800 border border-slate-200">
+function doPost(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var data = JSON.parse(e.postData.contents);
+  
+  sheet.clear(); // 清空舊資料
+  sheet.appendRow(['任務ID', '內容', '預定日期', '狀態']);
+  
+  data.tasks.forEach(function(t) {
+    sheet.appendRow([t.id, t.text, t.date || '今日', t.completed ? '已完成' : '未完成']);
+  });
+  
+  return ContentService.createTextOutput("Success");
+}</pre>
+                </li>
+                <li>點擊右上角 <strong>「部署」</strong> > <strong>「新增部署作業」</strong>。</li>
+                <li>類型選擇 <strong>「網頁應用程式」</strong>。</li>
+                <li>存取權限請選擇 <strong>「所有人」</strong>，然後點擊「部署」。</li>
+                <li>授權完成後，複製產生的 <strong>「網頁應用程式網址」</strong>，貼到上方的輸入框即可！</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // --- 核心資料狀態 ---
+        let tasks = JSON.parse(localStorage.getItem('myTasks')) || [];
+        let currentTab = 'today';
+        // 已經將您專屬的網址設定為預設值囉！
+        let webhookUrl = localStorage.getItem('googleWebhookUrl') || 'https://script.google.com/macros/s/AKfycbwpKP3befjcwX5HTU9r8DyitpFVvXnl7VkOcoIMCFqdLccJqyrwR7_VcE7oT4sHgAXU/exec';
+
+        // --- 初始化 ---
+        function init() {
+            // 設定今日日期顯示
+            const today = new Date();
+            const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+            document.getElementById('current-date').textContent = today.toLocaleDateString('zh-TW', options);
+            
+            // 設定日期輸入框預設值為明天
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            document.getElementById('task-date').value = tomorrow.toISOString().split('T')[0];
+
+            // 載入設定
+            document.getElementById('webhook-url').value = webhookUrl;
+
+            renderTasks();
+            checkReminders();
+        }
+
+        // --- 取得今日字串 (YYYY-MM-DD) ---
+        function getTodayString() {
+            const today = new Date();
+            // 處理時區問題，確保產生的字串是當地的今天
+            const offset = today.getTimezoneOffset() * 60000;
+            const localISOTime = (new Date(today - offset)).toISOString().split('T')[0];
+            return localISOTime;
+        }
+
+        // --- 切換頁籤 ---
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            const btnToday = document.getElementById('tab-today');
+            const btnFuture = document.getElementById('tab-future');
+            const dateContainer = document.getElementById('date-picker-container');
+
+            if (tab === 'today') {
+                btnToday.className = 'flex-1 py-4 text-center font-medium tab-active transition-all';
+                btnFuture.className = 'flex-1 py-4 text-center font-medium tab-inactive hover:bg-slate-50 transition-all';
+                dateContainer.classList.add('hidden');
+            } else {
+                btnFuture.className = 'flex-1 py-4 text-center font-medium tab-active transition-all';
+                btnToday.className = 'flex-1 py-4 text-center font-medium tab-inactive hover:bg-slate-50 transition-all';
+                dateContainer.classList.remove('hidden');
+            }
+
+            renderTasks();
+        }
+
+        // --- 處理按下 Enter 鍵 ---
+        function handleKeyPress(e) {
+            if (e.key === 'Enter') {
+                addTask();
+            }
+        }
+
+        // --- 新增任務 ---
+        function addTask() {
+            const input = document.getElementById('task-input');
+            const dateInput = document.getElementById('task-date');
+            const text = input.value.trim();
+
+            if (!text) return;
+
+            const newTask = {
+                id: Date.now().toString(),
+                text: text,
+                // 如果是今日事項，就不特別紀錄日期（或是紀錄今日）；未來規劃則取選定的日期
+                date: currentTab === 'today' ? getTodayString() : dateInput.value,
+                completed: false
+            };
+
+            tasks.push(newTask);
+            saveData();
+            
+            input.value = '';
+            renderTasks();
+            checkReminders();
+        }
+
+        // --- 切換完成狀態 ---
+        function toggleTask(id) {
+            const task = tasks.find(t => t.id === id);
+            if (task) {
+                task.completed = !task.completed;
+                saveData();
+                renderTasks();
+                checkReminders();
+            }
+        }
+
+        // --- 刪除任務 ---
+        function deleteTask(id) {
+            tasks = tasks.filter(t => t.id !== id);
+            saveData();
+            renderTasks();
+            checkReminders();
+        }
+
+        // --- 延至明天 ---
+        function postponeTask(id) {
+            const task = tasks.find(t => t.id === id);
+            if (task) {
+                const today = new Date();
+                // 加一天變成明天
+                today.setDate(today.getDate() + 1);
+                // 處理時區問題
+                const offset = today.getTimezoneOffset() * 60000;
+                const tomorrowStr = (new Date(today - offset)).toISOString().split('T')[0];
+                
+                task.date = tomorrowStr;
+                saveData();
+                renderTasks();
+                checkReminders();
+            }
+        }
+
+        // --- 儲存至瀏覽器 LocalStorage ---
+        function saveData() {
+            localStorage.setItem('myTasks', JSON.stringify(tasks));
+        }
+
+        // --- 檢查當天提醒 ---
+        function checkReminders() {
+            const todayStr = getTodayString();
+            // 找出今天必須完成且尚未完成的任務
+            const pendingToday = tasks.filter(t => 
+                t.completed === false && 
+                (t.date === todayStr || !t.date || t.date < todayStr) // 包含過期的
+            );
+
+            const reminderBox = document.getElementById('reminder-box');
+            const reminderText = document.getElementById('reminder-text');
+
+            if (pendingToday.length > 0) {
+                reminderBox.classList.remove('hidden');
+                reminderText.textContent = `您今天還有 ${pendingToday.length} 項重點任務尚未完成喔！`;
+            } else {
+                reminderBox.classList.add('hidden');
+            }
+        }
+
+        // --- 渲染任務清單 ---
+        function renderTasks() {
+            const listElement = document.getElementById('task-list');
+            const emptyState = document.getElementById('empty-state');
+            const todayStr = getTodayString();
+            
+            listElement.innerHTML = '';
+
+            // 根據當前頁籤過濾任務
+            let filteredTasks = [];
+            if (currentTab === 'today') {
+                // 顯示今天的、過去未完成的、或沒有指定日期的
+                filteredTasks = tasks.filter(t => t.date === todayStr || !t.date || (t.date < todayStr && !t.completed));
+            } else {
+                // 顯示未來的
+                filteredTasks = tasks.filter(t => t.date > todayStr);
+                // 依照日期排序
+                filteredTasks.sort((a, b) => new Date(a.date) - new Date(b.date));
+            }
+
+            if (filteredTasks.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            filteredTasks.forEach(task => {
+                const li = document.createElement('li');
+                li.className = 'flex items-center justify-between p-3 bg-white rounded-lg border border-slate-100 hover:border-slate-300 transition-colors group shadow-sm';
+                
+                // 任務文字與樣式
+                const textClass = task.completed ? 'task-done' : 'text-slate-800 font-medium';
+                
+                // 日期標籤 (如果是未來規劃，顯示日期)
+                let dateBadge = '';
+                if (currentTab === 'future' && task.date) {
+                    dateBadge = `<span class="ml-2 text-xs px-2 py-1 bg-slate-100 text-slate-500 rounded-md">${task.date}</span>`;
+                } else if (task.date && task.date < todayStr && !task.completed) {
+                     dateBadge = `<span class="ml-2 text-xs px-2 py-1 bg-red-100 text-red-600 rounded-md">已過期</span>`;
+                }
+
+                // 操作按鈕區塊
+                let actionButtons = '';
+                
+                // 如果是今天或已過期且「未完成」的任務，顯示「延至明天」按鈕
+                if (currentTab === 'today' && !task.completed) {
+                    actionButtons += `<button onclick="postponeTask('${task.id}')" class="text-slate-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-all p-1 text-sm mr-2" title="延至明天">➡️ 明天</button>`;
+                }
+                
+                // 刪除按鈕
+                actionButtons += `<button onclick="deleteTask('${task.id}')" class="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-1" title="刪除">🗑️</button>`;
+
+                li.innerHTML = `
+                    <div class="flex items-center gap-3 flex-1 overflow-hidden">
+                        <input type="checkbox" class="custom-checkbox flex-shrink-0" ${task.completed ? 'checked' : ''} onclick="toggleTask('${task.id}')">
+                        <span class="${textClass} truncate">${task.text} ${dateBadge}</span>
+                    </div>
+                    <div class="flex-shrink-0 flex items-center">
+                        ${actionButtons}
+                    </div>
+                `;
+                listElement.appendChild(li);
+            });
+        }
+
+        // --- 設定面板開關 ---
+        function toggleSettings() {
+            const panel = document.getElementById('settings-panel');
+            panel.classList.toggle('hidden');
+        }
+
+        // --- 儲存設定 ---
+        function saveSettings() {
+            webhookUrl = document.getElementById('webhook-url').value.trim();
+            localStorage.setItem('googleWebhookUrl', webhookUrl);
+            alert('設定已儲存！');
+            toggleSettings();
+        }
+
+        // --- 同步至 Google Sheets ---
+        async function syncToGoogle() {
+            if (!webhookUrl) {
+                alert('請先點擊右上角齒輪 ⚙️ 設定 Google Apps Script 網址！');
+                toggleSettings();
+                return;
+            }
+
+            const btn = document.getElementById('sync-btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span>⏳ 同步中...</span>';
+            btn.disabled = true;
+
+            try {
+                // 使用 no-cors 模式，因為 Apps Script webhook 通常會有跨域限制，
+                // 但我們只需要「發送」資料過去，不在乎讀取完整的回應。
+                await fetch(webhookUrl, {
+                    method: 'POST',
+                    mode: 'no-cors', 
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ tasks: tasks })
+                });
+
+                // 假設成功
+                const statusStr = document.getElementById('sync-status');
+                const now = new Date();
+                statusStr.textContent = `最後同步時間：${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+                
+            } catch (error) {
+                console.error('同步失敗:', error);
+                alert('同步失敗，請檢查網址是否正確或網路狀態。');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // 執行初始化
+        init();
+    </script>
+</body>
+</html>
