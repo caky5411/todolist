@@ -4,35 +4,251 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>我的今日待辦與規劃</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 改用 link 載入字型，避免 @import 阻塞渲染 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: 'Noto Sans TC', sans-serif;
+            font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background-color: #f8fafc;
+            padding: 12px;
+            -webkit-text-size-adjust: 100%;
         }
-        .task-done {
-            text-decoration: line-through;
-            color: #94a3b8;
+        @media (min-width: 640px) { body { padding: 32px; } }
+
+        /* ---- 容器 ---- */
+        .card {
+            max-width: 672px;
+            margin: 0 auto 32px;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
         }
-        .tab-active {
-            border-bottom: 3px solid #3b82f6;
+
+        /* ---- 標題列 ---- */
+        .header {
+            padding: 20px;
+            background: #2563eb;
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+        @media (min-width: 640px) { .header { padding: 24px; } }
+        .header h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        @media (min-width: 640px) { .header h1 { font-size: 1.5rem; } }
+        .header .date-text {
+            color: #bfdbfe;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        @media (min-width: 640px) { .header .date-text { font-size: 0.875rem; } }
+        .header-left { min-width: 0; }
+        .settings-btn {
+            flex-shrink: 0;
+            padding: 8px;
+            background: #3b82f6;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .settings-btn:hover { background: #60a5fa; }
+
+        /* ---- 提醒欄 ---- */
+        .reminder {
+            padding: 12px 20px;
+            background: #fffbeb;
+            border-bottom: 1px solid #fef3c7;
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+        @media (min-width: 640px) { .reminder { padding: 16px 24px; gap: 12px; } }
+        .reminder.show { display: flex; }
+        .reminder-icon { font-size: 1rem; flex-shrink: 0; }
+        @media (min-width: 640px) { .reminder-icon { font-size: 1.125rem; } }
+        .reminder-text {
+            color: #92400e;
+            font-size: 0.75rem;
+            font-weight: 500;
+            line-height: 1.5;
+        }
+        @media (min-width: 640px) { .reminder-text { font-size: 0.875rem; } }
+
+        /* ---- 頁籤 ---- */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 12px 0;
+            text-align: center;
+            font-weight: 500;
+            font-size: 0.875rem;
+            border: none;
+            background: none;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            color: #64748b;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        @media (min-width: 640px) { .tab-btn { padding: 16px 0; font-size: 1rem; } }
+        .tab-btn:hover { background: #f8fafc; }
+        .tab-btn.active {
+            border-bottom-color: #3b82f6;
             color: #1d4ed8;
         }
-        .tab-inactive {
-            color: #64748b;
-            border-bottom: 3px solid transparent;
+
+        /* ---- 輸入區 ---- */
+        .input-area {
+            padding: 16px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #fafbfc;
         }
-        /* 自訂核取方塊樣式 */
+        @media (min-width: 640px) { .input-area { padding: 24px; } }
+        .input-row {
+            display: flex;
+            gap: 8px;
+        }
+        .task-input {
+            flex: 1;
+            min-width: 0;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            font-size: 0.875rem;
+            font-family: inherit;
+            outline: none;
+            transition: box-shadow 0.2s, border-color 0.2s;
+        }
+        @media (min-width: 640px) { .task-input { padding: 8px 16px; font-size: 1rem; } }
+        .task-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+        }
+        .add-btn {
+            flex-shrink: 0;
+            background: #2563eb;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.2s;
+        }
+        @media (min-width: 640px) { .add-btn { padding: 8px 24px; font-size: 1rem; } }
+        .add-btn:hover { background: #1d4ed8; }
+        .date-picker-area {
+            margin-top: 12px;
+            display: none;
+        }
+        .date-picker-area.show { display: block; }
+        .date-picker-area label {
+            display: block;
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+        .date-input {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            font-size: 0.875rem;
+            font-family: inherit;
+            color: #334155;
+            outline: none;
+            transition: box-shadow 0.2s, border-color 0.2s;
+        }
+        @media (min-width: 640px) { .date-input { padding: 8px 16px; font-size: 1rem; } }
+        .date-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+        }
+
+        /* ---- 清單 ---- */
+        .list-area { padding: 16px; }
+        @media (min-width: 640px) { .list-area { padding: 24px; } }
+
+        .empty-state {
+            text-align: center;
+            padding: 32px 0;
+            color: #94a3b8;
+            display: none;
+        }
+        .empty-state.show { display: block; }
+        .empty-state .emoji { font-size: 2rem; margin-bottom: 8px; display: block; }
+        .empty-state p { font-size: 0.875rem; }
+        @media (min-width: 640px) { .empty-state p { font-size: 1rem; } }
+
+        .task-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        @media (min-width: 640px) { .task-list { gap: 12px; } }
+
+        .task-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid #f1f5f9;
+            transition: border-color 0.2s;
+            gap: 8px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        }
+        @media (min-width: 640px) { .task-item { padding: 16px; } }
+        .task-item:hover { border-color: #cbd5e1; }
+
+        .task-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* 自訂核取方塊 */
         .custom-checkbox {
+            -webkit-appearance: none;
             appearance: none;
-            width: 1.25rem;
-            height: 1.25rem;
+            width: 20px;
+            height: 20px;
             border: 2px solid #cbd5e1;
-            border-radius: 0.25rem;
+            border-radius: 4px;
             cursor: pointer;
             position: relative;
             transition: all 0.2s;
+            flex-shrink: 0;
+            background: #fff;
         }
         .custom-checkbox:checked {
             background-color: #3b82f6;
@@ -45,106 +261,276 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
+            font-size: 0.75rem;
+            line-height: 1;
+        }
+
+        .task-text {
             font-size: 0.875rem;
+            font-weight: 500;
+            color: #1e293b;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        @media (min-width: 640px) { .task-text { font-size: 1rem; } }
+        .task-text.done {
+            text-decoration: line-through;
+            color: #94a3b8;
+        }
+
+        .badge {
+            display: inline-block;
+            margin-left: 8px;
+            font-size: 0.625rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+        @media (min-width: 640px) { .badge { font-size: 0.75rem; } }
+        .badge-date { background: #f1f5f9; color: #64748b; }
+        .badge-overdue { background: #fef2f2; color: #dc2626; }
+
+        .task-actions {
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .action-btn {
+            border: none;
+            background: none;
+            cursor: pointer;
+            padding: 4px;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            transition: color 0.2s, opacity 0.2s;
+            white-space: nowrap;
+        }
+        @media (min-width: 640px) { .action-btn { font-size: 0.875rem; } }
+        .action-btn:hover { color: #3b82f6; }
+        .action-btn.delete:hover { color: #ef4444; }
+        /* 手機上直接顯示；桌面 hover 才出現 */
+        @media (min-width: 640px) {
+            .action-btn { opacity: 0; }
+            .task-item:hover .action-btn { opacity: 1; }
+        }
+        .postpone-btn { margin-right: 4px; }
+        @media (min-width: 640px) { .postpone-btn { margin-right: 8px; } }
+
+        /* ---- 底部同步區 ---- */
+        .sync-area {
+            margin-top: 24px;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.75rem;
+            color: #94a3b8;
+        }
+        @media (min-width: 640px) {
+            .sync-area {
+                flex-direction: row;
+                justify-content: space-between;
+            }
+        }
+        .sync-status { text-align: center; width: 100%; }
+        @media (min-width: 640px) { .sync-status { text-align: left; width: auto; } }
+        .sync-btn {
+            flex-shrink: 0;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            color: #2563eb;
+            font-weight: 500;
+            background: #eff6ff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.75rem;
+            transition: color 0.2s;
+        }
+        @media (min-width: 640px) { .sync-btn { width: auto; } }
+        .sync-btn:hover { color: #1e40af; }
+        .sync-btn.syncing { opacity: 0.6; pointer-events: none; }
+
+        /* ---- 設定面板 ---- */
+        .settings-card {
+            max-width: 672px;
+            margin: 0 auto 32px;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+            display: none;
+        }
+        .settings-card.show { display: block; }
+        .settings-header {
+            padding: 16px 24px;
+            background: #1e293b;
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .settings-header h2 { font-size: 1rem; font-weight: 700; }
+        @media (min-width: 640px) { .settings-header h2 { font-size: 1.125rem; } }
+        .close-btn {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 1.25rem;
+            padding: 4px;
+            transition: color 0.2s;
+        }
+        .close-btn:hover { color: #fff; }
+        .settings-body {
+            padding: 16px;
+            font-size: 0.75rem;
+            color: #475569;
+        }
+        @media (min-width: 640px) { .settings-body { padding: 24px; font-size: 0.875rem; } }
+        .settings-body label { display: block; font-weight: 500; margin-bottom: 4px; }
+        .webhook-input {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            font-size: 0.875rem;
+            font-family: inherit;
+            outline: none;
+            transition: box-shadow 0.2s, border-color 0.2s;
+        }
+        .webhook-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+        }
+        .save-settings-btn {
+            margin-top: 12px;
+            background: #1e293b;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.875rem;
+            transition: background 0.2s;
+            width: 100%;
+        }
+        @media (min-width: 640px) { .save-settings-btn { width: auto; } }
+        .save-settings-btn:hover { background: #334155; }
+        .settings-body hr { margin: 24px 0; border: none; border-top: 1px solid #e2e8f0; }
+        .settings-body h3 { font-size: 0.875rem; font-weight: 700; color: #0f172a; margin-bottom: 8px; }
+        @media (min-width: 640px) { .settings-body h3 { font-size: 1rem; } }
+        .settings-body ol { padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+        .settings-body pre {
+            background: #f1f5f9;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 8px;
+            overflow-x: auto;
+            font-size: 0.6875rem;
+            font-family: 'SF Mono', 'Consolas', 'Courier New', monospace;
+            color: #1e293b;
+            border: 1px solid #e2e8f0;
+            -webkit-overflow-scrolling: touch;
         }
     </style>
 </head>
-<body class="p-3 sm:p-4 md:p-8">
-    <div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
-        
+<body>
+    <div class="card">
         <!-- 標題與日期 -->
-        <div class="p-5 sm:p-6 bg-blue-600 text-white flex justify-between items-center gap-3">
-            <div class="min-w-0">
-                <h1 class="text-xl sm:text-2xl font-bold mb-1 truncate">工作與規劃清單</h1>
-                <p id="current-date" class="text-blue-100 opacity-90 text-xs sm:text-sm truncate"></p>
+        <div class="header">
+            <div class="header-left">
+                <h1>工作與規劃清單</h1>
+                <p class="date-text" id="current-date"></p>
             </div>
-            <button onclick="toggleSettings()" class="flex-shrink-0 p-2 bg-blue-500 hover:bg-blue-400 rounded-lg transition-colors flex items-center justify-center" title="設定 Google 試算表">
-                ⚙️
-            </button>
+            <button onclick="toggleSettings()" class="settings-btn" title="設定 Google 試算表">⚙️</button>
         </div>
 
-        <!-- 提醒欄位 (當天提醒) -->
-        <div id="reminder-box" class="px-5 py-3 sm:px-6 sm:py-4 bg-amber-50 border-b border-amber-100 hidden">
-            <div class="flex items-center gap-2 sm:gap-3">
-                <span class="text-amber-500 text-base sm:text-lg flex-shrink-0">🔔</span>
-                <p class="text-amber-800 text-xs sm:text-sm font-medium leading-snug" id="reminder-text">您今天還有待辦事項尚未完成喔！</p>
-            </div>
+        <!-- 提醒欄位 -->
+        <div id="reminder-box" class="reminder">
+            <span class="reminder-icon">🔔</span>
+            <p class="reminder-text" id="reminder-text">您今天還有待辦事項尚未完成喔！</p>
         </div>
 
         <!-- 頁籤切換 -->
-        <div class="flex border-b border-slate-100">
-            <button onclick="switchTab('today')" id="tab-today" class="flex-1 py-3 sm:py-4 text-sm sm:text-base text-center font-medium tab-active transition-all">☀️ 今日事項</button>
-            <button onclick="switchTab('future')" id="tab-future" class="flex-1 py-3 sm:py-4 text-sm sm:text-base text-center font-medium tab-inactive hover:bg-slate-50 transition-all">📅 未來規劃</button>
+        <div class="tabs">
+            <button onclick="switchTab('today')" id="tab-today" class="tab-btn active">☀️ 今日事項</button>
+            <button onclick="switchTab('future')" id="tab-future" class="tab-btn">📅 未來規劃</button>
         </div>
 
         <!-- 輸入區域 -->
-        <div class="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50">
-            <div class="flex flex-col gap-3">
-                <div class="flex gap-2">
-                    <input type="text" id="task-input" placeholder="準備做些什麼呢？" class="w-full min-w-0 px-3 py-2 sm:px-4 sm:py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm sm:text-base" onkeypress="handleKeyPress(event)">
-                    <!-- 加入 flex-shrink-0 防止按鈕在手機上被擠壓變形 -->
-                    <button onclick="addTask()" class="flex-shrink-0 bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-2 rounded-lg font-medium transition-colors text-sm sm:text-base">新增</button>
-                </div>
-                <div id="date-picker-container" class="hidden animate-fade-in">
-                    <label class="text-xs text-slate-500 mb-1 block">預計執行日期：</label>
-                    <input type="date" id="task-date" class="w-full px-3 py-2 sm:px-4 sm:py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-slate-700 text-sm sm:text-base">
-                </div>
+        <div class="input-area">
+            <div class="input-row">
+                <input type="text" id="task-input" placeholder="準備做些什麼呢？" class="task-input" onkeypress="handleKeyPress(event)">
+                <button onclick="addTask()" class="add-btn">新增</button>
+            </div>
+            <div id="date-picker-container" class="date-picker-area">
+                <label>預計執行日期：</label>
+                <input type="date" id="task-date" class="date-input">
             </div>
         </div>
 
         <!-- 清單區域 -->
-        <div class="p-4 sm:p-6">
-            <div id="empty-state" class="text-center py-8 text-slate-400 hidden">
-                <span class="text-4xl mb-2 block">✨</span>
-                <p class="text-sm sm:text-base">目前沒有任務，好好放鬆一下吧！</p>
+        <div class="list-area">
+            <div id="empty-state" class="empty-state">
+                <span class="emoji">✨</span>
+                <p>目前沒有任務，好好放鬆一下吧！</p>
             </div>
-            
-            <ul id="task-list" class="space-y-2 sm:space-y-3">
-                <!-- 任務會透過 JavaScript 動態插入這裡 -->
-            </ul>
-            
-            <!-- 雲端同步狀態 (改成在手機上會自動上下排列) -->
-            <div class="mt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 border-t border-slate-100 pt-5 gap-3">
-                <span id="sync-status" class="text-center sm:text-left w-full sm:w-auto">目前進度已自動儲存於瀏覽器</span>
-                <button onclick="syncToGoogle()" id="sync-btn" class="flex-shrink-0 w-full sm:w-auto flex items-center justify-center gap-1 text-blue-600 hover:text-blue-800 font-medium transition-colors bg-blue-50 px-4 py-2 rounded-md">
+
+            <ul id="task-list" class="task-list"></ul>
+
+            <!-- 雲端同步狀態 -->
+            <div class="sync-area">
+                <span id="sync-status" class="sync-status">目前進度已自動儲存於瀏覽器</span>
+                <button onclick="syncToGoogle()" id="sync-btn" class="sync-btn">
                     <span>☁️ 同步至試算表</span>
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- 設定說明與教學 (預設隱藏) -->
-    <div id="settings-panel" class="max-w-2xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hidden mb-8">
-        <div class="p-4 sm:p-6 bg-slate-800 text-white flex justify-between items-center">
-            <h2 class="text-base sm:text-lg font-bold">Google 試算表同步設定</h2>
-            <button onclick="toggleSettings()" class="text-slate-400 hover:text-white p-1">✕</button>
+    <!-- 設定面板 -->
+    <div id="settings-panel" class="settings-card">
+        <div class="settings-header">
+            <h2>Google 試算表同步設定</h2>
+            <button onclick="toggleSettings()" class="close-btn">✕</button>
         </div>
-        <div class="p-4 sm:p-6 space-y-4 text-xs sm:text-sm text-slate-700">
+        <div class="settings-body">
             <div>
-                <label class="block font-medium mb-1">您的 Google Apps Script 網址 (Webhook URL)</label>
-                <input type="text" id="webhook-url" placeholder="https://script.google.com/macros/s/..." class="w-full px-3 py-2 sm:px-4 sm:py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <button onclick="saveSettings()" class="mt-3 w-full sm:w-auto bg-slate-800 text-white px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors">儲存設定</button>
+                <label>您的 Google Apps Script 網址 (Webhook URL)</label>
+                <input type="text" id="webhook-url" placeholder="https://script.google.com/macros/s/..." class="webhook-input">
+                <button onclick="saveSettings()" class="save-settings-btn">儲存設定</button>
             </div>
-            
-            <hr class="my-6 border-slate-200">
-            
-            <h3 class="font-bold text-sm sm:text-base text-slate-900">📝 如何取得網址？(只需設定一次)</h3>
-            <ol class="list-decimal pl-5 space-y-2">
+
+            <hr>
+
+            <h3>📝 如何取得網址？(只需設定一次)</h3>
+            <ol>
                 <li>新增一個空白的 Google 試算表。</li>
                 <li>點擊上方選單的 <strong>「擴充功能」</strong> > <strong>「Apps Script」</strong>。</li>
                 <li>將編輯器內的程式碼清空，貼上以下程式碼：
-                    <pre class="bg-slate-100 p-3 rounded mt-2 overflow-x-auto text-xs font-mono text-slate-800 border border-slate-200">
-function doPost(e) {
+                    <pre>function doPost(e) {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   var data = JSON.parse(e.postData.contents);
-  
+
   sheet.clear();
   sheet.appendRow(['任務ID', '內容', '預定日期', '狀態']);
-  
+
   data.tasks.forEach(function(t) {
     sheet.appendRow([t.id, t.text, t.date || '今日', t.completed ? '已完成' : '未完成']);
   });
-  
+
   return ContentService.createTextOutput("Success");
 }</pre>
                 </li>
@@ -157,25 +543,36 @@ function doPost(e) {
     </div>
 
     <script>
+        // --- 安全的 localStorage 存取（防止隱私模式報錯）---
+        function safeGetItem(key) {
+            try { return localStorage.getItem(key); }
+            catch(e) { return null; }
+        }
+        function safeSetItem(key, value) {
+            try { localStorage.setItem(key, value); }
+            catch(e) { /* 無法存取，靜默失敗 */ }
+        }
+
         // --- 核心資料狀態 ---
-        let tasks = JSON.parse(localStorage.getItem('myTasks')) || [];
+        let tasks = [];
+        try {
+            tasks = JSON.parse(safeGetItem('myTasks')) || [];
+        } catch(e) {
+            tasks = [];
+        }
         let currentTab = 'today';
-        // 已經將您專屬的網址設定為預設值囉！
-        let webhookUrl = localStorage.getItem('googleWebhookUrl') || 'https://script.google.com/macros/s/AKfycbwpKP3befjcwX5HTU9r8DyitpFVvXnl7VkOcoIMCFqdLccJqyrwR7_VcE7oT4sHgAXU/exec';
+        let webhookUrl = safeGetItem('googleWebhookUrl') || 'https://script.google.com/macros/s/AKfycbwpKP3befjcwX5HTU9r8DyitpFVvXnl7VkOcoIMCFqdLccJqyrwR7_VcE7oT4sHgAXU/exec';
 
         // --- 初始化 ---
         function init() {
-            // 設定今日日期顯示
-            const today = new Date();
-            const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+            var today = new Date();
+            var options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
             document.getElementById('current-date').textContent = today.toLocaleDateString('zh-TW', options);
-            
-            // 設定日期輸入框預設值為明天
-            const tomorrow = new Date(today);
+
+            var tomorrow = new Date(today);
             tomorrow.setDate(tomorrow.getDate() + 1);
             document.getElementById('task-date').value = tomorrow.toISOString().split('T')[0];
 
-            // 載入設定
             document.getElementById('webhook-url').value = webhookUrl;
 
             renderTasks();
@@ -184,66 +581,59 @@ function doPost(e) {
 
         // --- 取得今日字串 (YYYY-MM-DD) ---
         function getTodayString() {
-            const today = new Date();
-            const offset = today.getTimezoneOffset() * 60000;
-            const localISOTime = (new Date(today - offset)).toISOString().split('T')[0];
-            return localISOTime;
+            var today = new Date();
+            var y = today.getFullYear();
+            var m = String(today.getMonth() + 1).padStart(2, '0');
+            var d = String(today.getDate()).padStart(2, '0');
+            return y + '-' + m + '-' + d;
         }
 
         // --- 切換頁籤 ---
         function switchTab(tab) {
             currentTab = tab;
-            
-            const btnToday = document.getElementById('tab-today');
-            const btnFuture = document.getElementById('tab-future');
-            const dateContainer = document.getElementById('date-picker-container');
+            var btnToday = document.getElementById('tab-today');
+            var btnFuture = document.getElementById('tab-future');
+            var dateContainer = document.getElementById('date-picker-container');
 
             if (tab === 'today') {
-                btnToday.className = 'flex-1 py-3 sm:py-4 text-sm sm:text-base text-center font-medium tab-active transition-all';
-                btnFuture.className = 'flex-1 py-3 sm:py-4 text-sm sm:text-base text-center font-medium tab-inactive hover:bg-slate-50 transition-all';
-                dateContainer.classList.add('hidden');
+                btnToday.classList.add('active');
+                btnFuture.classList.remove('active');
+                dateContainer.classList.remove('show');
             } else {
-                btnFuture.className = 'flex-1 py-3 sm:py-4 text-sm sm:text-base text-center font-medium tab-active transition-all';
-                btnToday.className = 'flex-1 py-3 sm:py-4 text-sm sm:text-base text-center font-medium tab-inactive hover:bg-slate-50 transition-all';
-                dateContainer.classList.remove('hidden');
+                btnFuture.classList.add('active');
+                btnToday.classList.remove('active');
+                dateContainer.classList.add('show');
             }
-
             renderTasks();
         }
 
-        // --- 處理按下 Enter 鍵 ---
+        // --- Enter 鍵 ---
         function handleKeyPress(e) {
-            if (e.key === 'Enter') {
-                addTask();
-            }
+            if (e.key === 'Enter') addTask();
         }
 
         // --- 新增任務 ---
         function addTask() {
-            const input = document.getElementById('task-input');
-            const dateInput = document.getElementById('task-date');
-            const text = input.value.trim();
-
+            var input = document.getElementById('task-input');
+            var dateInput = document.getElementById('task-date');
+            var text = input.value.trim();
             if (!text) return;
 
-            const newTask = {
+            tasks.push({
                 id: Date.now().toString(),
                 text: text,
                 date: currentTab === 'today' ? getTodayString() : dateInput.value,
                 completed: false
-            };
-
-            tasks.push(newTask);
+            });
             saveData();
-            
             input.value = '';
             renderTasks();
             checkReminders();
         }
 
-        // --- 切換完成狀態 ---
+        // --- 切換完成 ---
         function toggleTask(id) {
-            const task = tasks.find(t => t.id === id);
+            var task = tasks.find(function(t) { return t.id === id; });
             if (task) {
                 task.completed = !task.completed;
                 saveData();
@@ -252,9 +642,9 @@ function doPost(e) {
             }
         }
 
-        // --- 刪除任務 ---
+        // --- 刪除 ---
         function deleteTask(id) {
-            tasks = tasks.filter(t => t.id !== id);
+            tasks = tasks.filter(function(t) { return t.id !== id; });
             saveData();
             renderTasks();
             checkReminders();
@@ -262,161 +652,146 @@ function doPost(e) {
 
         // --- 延至明天 ---
         function postponeTask(id) {
-            const task = tasks.find(t => t.id === id);
+            var task = tasks.find(function(t) { return t.id === id; });
             if (task) {
-                const today = new Date();
-                today.setDate(today.getDate() + 1);
-                const offset = today.getTimezoneOffset() * 60000;
-                const tomorrowStr = (new Date(today - offset)).toISOString().split('T')[0];
-                
-                task.date = tomorrowStr;
+                var tmr = new Date();
+                tmr.setDate(tmr.getDate() + 1);
+                var y = tmr.getFullYear();
+                var m = String(tmr.getMonth() + 1).padStart(2, '0');
+                var d = String(tmr.getDate()).padStart(2, '0');
+                task.date = y + '-' + m + '-' + d;
                 saveData();
                 renderTasks();
                 checkReminders();
             }
         }
 
-        // --- 儲存至瀏覽器 LocalStorage ---
+        // --- 儲存 ---
         function saveData() {
-            localStorage.setItem('myTasks', JSON.stringify(tasks));
+            safeSetItem('myTasks', JSON.stringify(tasks));
         }
 
-        // --- 檢查當天提醒 ---
+        // --- 提醒 ---
         function checkReminders() {
-            const todayStr = getTodayString();
-            const pendingToday = tasks.filter(t => 
-                t.completed === false && 
-                (t.date === todayStr || !t.date || t.date < todayStr)
-            );
-
-            const reminderBox = document.getElementById('reminder-box');
-            const reminderText = document.getElementById('reminder-text');
-
-            if (pendingToday.length > 0) {
-                reminderBox.classList.remove('hidden');
-                reminderText.textContent = `您今天還有 ${pendingToday.length} 項重點任務尚未完成喔！`;
+            var todayStr = getTodayString();
+            var pending = tasks.filter(function(t) {
+                return !t.completed && (t.date === todayStr || !t.date || t.date < todayStr);
+            });
+            var box = document.getElementById('reminder-box');
+            var txt = document.getElementById('reminder-text');
+            if (pending.length > 0) {
+                box.classList.add('show');
+                txt.textContent = '您今天還有 ' + pending.length + ' 項重點任務尚未完成喔！';
             } else {
-                reminderBox.classList.add('hidden');
+                box.classList.remove('show');
             }
         }
 
-        // --- 渲染任務清單 ---
+        // --- 渲染 ---
         function renderTasks() {
-            const listElement = document.getElementById('task-list');
-            const emptyState = document.getElementById('empty-state');
-            const todayStr = getTodayString();
-            
-            listElement.innerHTML = '';
+            var listEl = document.getElementById('task-list');
+            var emptyEl = document.getElementById('empty-state');
+            var todayStr = getTodayString();
+            listEl.innerHTML = '';
 
-            let filteredTasks = [];
+            var filtered = [];
             if (currentTab === 'today') {
-                filteredTasks = tasks.filter(t => t.date === todayStr || !t.date || (t.date < todayStr && !t.completed));
+                filtered = tasks.filter(function(t) {
+                    return t.date === todayStr || !t.date || (t.date < todayStr && !t.completed);
+                });
             } else {
-                filteredTasks = tasks.filter(t => t.date > todayStr);
-                filteredTasks.sort((a, b) => new Date(a.date) - new Date(b.date));
+                filtered = tasks.filter(function(t) { return t.date > todayStr; });
+                filtered.sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
             }
 
-            if (filteredTasks.length === 0) {
-                emptyState.classList.remove('hidden');
+            if (filtered.length === 0) {
+                emptyEl.classList.add('show');
             } else {
-                emptyState.classList.add('hidden');
+                emptyEl.classList.remove('show');
             }
 
-            filteredTasks.forEach(task => {
-                const li = document.createElement('li');
-                li.className = 'flex items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-slate-100 hover:border-slate-300 transition-colors group shadow-sm gap-2';
-                
-                const textClass = task.completed ? 'task-done' : 'text-slate-800 font-medium';
-                
-                let dateBadge = '';
+            filtered.forEach(function(task) {
+                var li = document.createElement('li');
+                li.className = 'task-item';
+
+                var textClass = task.completed ? 'task-text done' : 'task-text';
+
+                var badge = '';
                 if (currentTab === 'future' && task.date) {
-                    dateBadge = `<span class="ml-2 text-[10px] sm:text-xs px-2 py-1 bg-slate-100 text-slate-500 rounded-md whitespace-nowrap">${task.date}</span>`;
+                    badge = '<span class="badge badge-date">' + task.date + '</span>';
                 } else if (task.date && task.date < todayStr && !task.completed) {
-                     dateBadge = `<span class="ml-2 text-[10px] sm:text-xs px-2 py-1 bg-red-100 text-red-600 rounded-md whitespace-nowrap">已過期</span>`;
+                    badge = '<span class="badge badge-overdue">已過期</span>';
                 }
 
-                let actionButtons = '';
-                
+                var actions = '';
                 if (currentTab === 'today' && !task.completed) {
-                    // 手機上預設顯示按鈕，不用 hover
-                    actionButtons += `<button onclick="postponeTask('${task.id}')" class="text-slate-400 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100 transition-all p-1 text-xs sm:text-sm mr-1 sm:mr-2 flex-shrink-0 whitespace-nowrap" title="延至明天">➡️ 明天</button>`;
+                    actions += '<button onclick="postponeTask(\'' + task.id + '\')" class="action-btn postpone-btn" title="延至明天">➡️ 明天</button>';
                 }
-                
-                actionButtons += `<button onclick="deleteTask('${task.id}')" class="text-slate-300 hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100 transition-all p-1 flex-shrink-0" title="刪除">🗑️</button>`;
+                actions += '<button onclick="deleteTask(\'' + task.id + '\')" class="action-btn delete" title="刪除">🗑️</button>';
 
-                li.innerHTML = `
-                    <div class="flex items-center gap-3 flex-1 min-w-0">
-                        <input type="checkbox" class="custom-checkbox flex-shrink-0" ${task.completed ? 'checked' : ''} onclick="toggleTask('${task.id}')">
-                        <span class="${textClass} truncate text-sm sm:text-base">${task.text} ${dateBadge}</span>
-                    </div>
-                    <div class="flex-shrink-0 flex items-center">
-                        ${actionButtons}
-                    </div>
-                `;
-                listElement.appendChild(li);
+                li.innerHTML =
+                    '<div class="task-left">' +
+                        '<input type="checkbox" class="custom-checkbox" ' + (task.completed ? 'checked' : '') + ' onclick="toggleTask(\'' + task.id + '\')">' +
+                        '<span class="' + textClass + '">' + task.text + ' ' + badge + '</span>' +
+                    '</div>' +
+                    '<div class="task-actions">' + actions + '</div>';
+
+                listEl.appendChild(li);
             });
         }
 
-        // --- 設定面板開關 ---
+        // --- 設定面板 ---
         function toggleSettings() {
-            const panel = document.getElementById('settings-panel');
-            panel.classList.toggle('hidden');
-            if(!panel.classList.contains('hidden')) {
-                // 捲動到下方
+            var panel = document.getElementById('settings-panel');
+            panel.classList.toggle('show');
+            if (panel.classList.contains('show')) {
                 panel.scrollIntoView({ behavior: 'smooth' });
             }
         }
 
-        // --- 儲存設定 ---
         function saveSettings() {
             webhookUrl = document.getElementById('webhook-url').value.trim();
-            localStorage.setItem('googleWebhookUrl', webhookUrl);
+            safeSetItem('googleWebhookUrl', webhookUrl);
             alert('設定已儲存！');
             toggleSettings();
         }
 
         // --- 同步至 Google Sheets ---
-        async function syncToGoogle() {
+        function syncToGoogle() {
             if (!webhookUrl) {
                 alert('請先設定 Google Apps Script 網址！');
                 toggleSettings();
                 return;
             }
 
-            const btn = document.getElementById('sync-btn');
-            const statusStr = document.getElementById('sync-status');
-            const originalHTML = btn.innerHTML;
-            
+            var btn = document.getElementById('sync-btn');
+            var statusEl = document.getElementById('sync-status');
+            var originalHTML = btn.innerHTML;
+
             btn.innerHTML = '<span>⏳ 同步中...</span>';
-            btn.classList.add('opacity-75');
-            btn.disabled = true;
+            btn.classList.add('syncing');
 
-            try {
-                await fetch(webhookUrl, {
-                    method: 'POST',
-                    mode: 'no-cors', 
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ tasks: tasks })
-                });
-
-                const now = new Date();
-                statusStr.textContent = `✅ 最後同步時間：${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-                
-            } catch (error) {
-                console.error('同步失敗:', error);
+            fetch(webhookUrl, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tasks: tasks })
+            }).then(function() {
+                var now = new Date();
+                var h = String(now.getHours()).padStart(2, '0');
+                var m = String(now.getMinutes()).padStart(2, '0');
+                statusEl.textContent = '✅ 最後同步時間：' + h + ':' + m;
+            }).catch(function(err) {
+                console.error('同步失敗:', err);
                 alert('同步失敗，請檢查網路狀態。');
-            } finally {
+            }).finally(function() {
                 btn.innerHTML = originalHTML;
-                btn.classList.remove('opacity-75');
-                btn.disabled = false;
-            }
+                btn.classList.remove('syncing');
+            });
         }
 
-        // 執行初始化
+        // 啟動
         init();
     </script>
 </body>
 </html>
-
